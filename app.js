@@ -918,8 +918,8 @@ function renderImpactTab() {
     // Simulate Button state
     const isSimulated = simulatedShops.has(d.name);
     const simBtnHtml = isSimulated ? 
-      `<button class="btn-add-sim added" data-shop="${escapeQuotes(d.name)}" onclick="toggleSimShop(this)">✓ Đã thêm</button>` : 
-      `<button class="btn-add-sim" data-shop="${escapeQuotes(d.name)}" onclick="toggleSimShop(this)">Mô Phỏng</button>`;
+      `<button class="btn-add-sim added" data-shop="${encodeURIComponent(d.name)}" onclick="toggleSimShop(this)">✓ Đã thêm</button>` : 
+      `<button class="btn-add-sim" data-shop="${encodeURIComponent(d.name)}" onclick="toggleSimShop(this)">Mô Phỏng</button>`;
 
     tr.innerHTML = `
       <td class="col-rank">${rank}</td>
@@ -1065,7 +1065,7 @@ function renderScatterPlot(bcData) {
 
 // Toggle adding a shop to simulator from Impact table
 function toggleSimShop(btn) {
-  const name = btn.getAttribute('data-shop');
+  const name = decodeURIComponent(btn.getAttribute('data-shop'));
   let justAdded = false;
   if (simulatedShops.has(name)) {
     simulatedShops.delete(name);
@@ -1242,7 +1242,7 @@ function renderSimulatorDetails() {
           <div class="sim-item-name">${shop.name}</div>
           <div class="sim-item-vung"><span class="vung-badge">${shop.region}</span></div>
         </div>
-        <button class="btn-remove-sim" data-shop="${escapeQuotes(shop.name)}" onclick="removeSimShop(this)">Xóa</button>
+        <button class="btn-remove-sim" data-shop="${encodeURIComponent(shop.name)}" onclick="removeSimShop(this)">Xóa</button>
       </div>
       <div class="sim-item-body">
         <div class="sim-current">
@@ -1258,7 +1258,7 @@ function renderSimulatorDetails() {
                    max="${Math.max(15, Math.ceil(shop.originalRlc))}" 
                    step="0.1" 
                    value="${shop.targetRlc}"
-                   data-shop="${escapeQuotes(shop.name)}"
+                   data-shop="${encodeURIComponent(shop.name)}"
                    oninput="updateSimTarget(this)">
             <span class="sim-target-pct">${shop.targetRlc.toFixed(1)}%</span>
           </div>
@@ -1327,7 +1327,7 @@ function getImpactMetricsForShop(name) {
 
 // Update Target RLC in Map when slider moves
 function updateSimTarget(slider) {
-  const name = slider.getAttribute('data-shop');
+  const name = decodeURIComponent(slider.getAttribute('data-shop'));
   const shop = simulatedShops.get(name);
   if (shop) {
     shop.targetRlc = +parseFloat(slider.value).toFixed(1);
@@ -1373,7 +1373,7 @@ function updateSimTarget(slider) {
 
 // Remove shop from simulator
 function removeSimShop(btn) {
-  const name = btn.getAttribute('data-shop');
+  const name = decodeURIComponent(btn.getAttribute('data-shop'));
   simulatedShops.delete(name);
   renderSimulatorTab();
   

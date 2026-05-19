@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GHN — Phân Tích % Rớt Luân Chuyển</title>
+  <meta name="description" content="Dashboard phân tích % rớt luân chuyển theo vùng, bưu cục, loại hàng và loại khách hàng GHN.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="loading-overlay">
+  <div class="loader-box">
+    <div class="loader-logo">GHN</div>
+    <div class="loader-title">Đang tải dữ liệu...</div>
+    <div class="loader-bar"><div class="loader-bar-fill" id="loader-bar-fill"></div></div>
+    <div class="loader-status" id="loader-status">Kết nối Google Sheets...</div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" class="hidden">
+
+  <!-- HEADER -->
+  <header id="app-header">
+    <div class="header-brand">
+      <div class="brand-badge">GHN</div>
+      <div class="brand-info">
+        <div class="brand-title">Rớt Luân Chuyển Analytics</div>
+        <div class="brand-sub" id="header-last-updated">—</div>
+      </div>
+    </div>
+
+    <div class="header-filters">
+      <!-- Period Mode Toggle -->
+      <div class="toggle-group" id="period-mode-toggle">
+        <button class="toggle-btn" data-mode="day">Ngày</button>
+        <button class="toggle-btn active" data-mode="week">Tuần</button>
+        <button class="toggle-btn" data-mode="month">Tháng</button>
+      </div>
+
+      <!-- Period Selector -->
+      <select class="filter-select" id="period-select"></select>
+
+      <div class="filter-divider"></div>
+
+      <!-- Loại hàng -->
+      <select class="filter-select" id="filter-loai-hang">
+        <option value="all">Tất cả hàng</option>
+        <option value="HÀNG NHẸ">Hàng Nhẹ</option>
+        <option value="HÀNG NẶNG">Hàng Nặng</option>
+      </select>
+
+      <!-- Loại KH -->
+      <select class="filter-select" id="filter-loai-kh">
+        <option value="all">Tất cả KH</option>
+        <option value="TTS">TTS</option>
+        <option value="Shopee">Shopee</option>
+        <option value="Khac">Khác</option>
+      </select>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-refresh" id="btn-refresh" title="Tải lại dữ liệu">
+        <span class="refresh-icon">↻</span>
+        <span>Cập nhật</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- TAB NAV -->
+  <nav id="tab-nav">
+    <button class="tab-btn active" data-tab="overview">
+      <span class="tab-icon">📊</span>
+      <span>Tổng Quan</span>
+    </button>
+    <button class="tab-btn" data-tab="impact">
+      <span class="tab-icon">🎯</span>
+      <span>Bưu Cục Ảnh Hưởng</span>
+    </button>
+    <button class="tab-btn" data-tab="simulator">
+      <span class="tab-icon">⚡</span>
+      <span>Mô Phỏng Cải Thiện</span>
+    </button>
+  </nav>
+
+  <!-- MAIN -->
+  <main id="main-content">
+
+    <!-- ===== TAB: OVERVIEW ===== -->
+    <div class="tab-pane active" id="tab-overview">
+
+      <!-- KPI Row -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card" id="kpi-rlc">
+          <div class="kpi-label">%RLC Toàn Quốc</div>
+          <div class="kpi-value" id="kpi-rlc-val">—</div>
+          <div class="kpi-delta" id="kpi-rlc-delta"></div>
+          <div class="kpi-sub" id="kpi-rlc-sub"></div>
+        </div>
+        <div class="kpi-card" id="kpi-orders">
+          <div class="kpi-label">Tổng Đơn</div>
+          <div class="kpi-value" id="kpi-orders-val">—</div>
+          <div class="kpi-delta" id="kpi-orders-delta"></div>
+          <div class="kpi-sub" id="kpi-orders-sub"></div>
+        </div>
+        <div class="kpi-card" id="kpi-rot">
+          <div class="kpi-label">Đơn Rớt</div>
+          <div class="kpi-value" id="kpi-rot-val">—</div>
+          <div class="kpi-delta" id="kpi-rot-delta"></div>
+          <div class="kpi-sub" id="kpi-rot-sub"></div>
+        </div>
+        <div class="kpi-card" id="kpi-buucuc">
+          <div class="kpi-label">Bưu Cục Có Rớt</div>
+          <div class="kpi-value" id="kpi-buucuc-val">—</div>
+          <div class="kpi-delta" id="kpi-buucuc-delta"></div>
+          <div class="kpi-sub" id="kpi-buucuc-sub"></div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="charts-row">
+        <div class="card chart-card" id="card-region-chart">
+          <div class="card-header">
+            <div class="card-title">%RLC Theo Vùng</div>
+            <select class="filter-select-sm" id="region-chart-sort">
+              <option value="rlc">Sắp xếp theo %RLC</option>
+              <option value="contribution">Sắp xếp theo Đóng Góp</option>
+              <option value="orders">Sắp xếp theo Số Đơn</option>
+            </select>
+          </div>
+          <div class="chart-wrap chart-wrap-region">
+            <canvas id="chart-region-bar"></canvas>
+          </div>
+        </div>
+
+        <div class="card chart-card" id="card-trend-chart">
+          <div class="card-header">
+            <div class="card-title">Xu Hướng RLC</div>
+            <select class="filter-select-sm" id="trend-region-select">
+              <option value="all">Toàn Quốc</option>
+            </select>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="chart-trend-line"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Heatmap -->
+      <div class="card" id="card-heatmap">
+        <div class="card-header">
+          <div class="card-title">Heatmap Vùng × Thời Gian</div>
+          <div class="card-hint">Màu sắc thể hiện mức độ %RLC: <span class="legend-good">Tốt</span> → <span class="legend-warn">Cảnh báo</span> → <span class="legend-bad">Nguy hiểm</span></div>
+        </div>
+        <div class="heatmap-wrap" id="heatmap-container"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: IMPACT EXPLORER ===== -->
+    <div class="tab-pane" id="tab-impact">
+      <div class="impact-toolbar">
+        <input type="text" class="search-input" id="impact-search" placeholder="🔍 Tìm bưu cục...">
+        <select class="filter-select" id="impact-filter-vung">
+          <option value="all">Tất cả vùng</option>
+        </select>
+        <select class="filter-select" id="impact-sort-select">
+          <option value="contribution">Sắp xếp: Đóng Góp RLC Quốc Gia</option>
+          <option value="rlc_pct">Sắp xếp: %RLC</option>
+          <option value="rot_count">Sắp xếp: Số Đơn Rớt</option>
+          <option value="total_order">Sắp xếp: Tổng Đơn</option>
+        </select>
+        <div class="impact-info" id="impact-count-info"></div>
+      </div>
+
+      <div class="scatter-wrap card" id="card-scatter">
+        <div class="card-header">
+          <div class="card-title">Scatter: Tổng Đơn × %RLC (kích thước = Đơn Rớt)</div>
+          <div class="card-hint">Góc trên phải = bưu cục cần ưu tiên cải thiện nhất</div>
+        </div>
+        <div class="chart-wrap chart-wrap-scatter">
+          <canvas id="chart-scatter"></canvas>
+        </div>
+      </div>
+
+      <div class="card" id="card-impact-table">
+        <div class="impact-table-wrap">
+          <table class="impact-table" id="impact-table">
+            <thead>
+              <tr>
+                <th class="col-rank">#</th>
+                <th class="col-name">Bưu Cục</th>
+                <th class="col-region">Vùng</th>
+                <th class="col-rlc sortable active" data-col="rlc_pct">%RLC ▼</th>
+                <th class="col-orders sortable" data-col="total_order">Tổng Đơn</th>
+                <th class="col-rot sortable" data-col="rot_count">Đơn Rớt</th>
+                <th class="col-contrib sortable" data-col="contribution">% Đóng Góp</th>
+                <th class="col-action" title="Thêm vào Mô Phỏng Cải Thiện">Hành Động</th>
+              </tr>
+            </thead>
+            <tbody id="impact-table-body">
+            </tbody>
+          </table>
+        </div>
+        <div class="table-pagination" id="table-pagination"></div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: SIMULATOR ===== -->
+    <div class="tab-pane" id="tab-simulator">
+      <div class="sim-layout">
+
+        <!-- Left: Search panel -->
+        <div class="sim-search-panel card">
+          <div class="card-title" style="margin-bottom:12px">Thêm Bưu Cục</div>
+          <input type="text" class="search-input" id="sim-search" placeholder="🔍 Tìm bưu cục...">
+          <select class="filter-select" id="sim-filter-vung" style="margin-top:8px;width:100%">
+            <option value="all">Tất cả vùng</option>
+          </select>
+          <div class="sim-buucuc-list" id="sim-buucuc-list"></div>
+        </div>
+
+        <!-- Right: Simulator + Results -->
+        <div class="sim-right">
+
+          <!-- Results card -->
+          <div class="card sim-result-card">
+            <div class="card-title">Kết Quả Mô Phỏng</div>
+            <div class="sim-results" id="sim-results">
+              <div class="sim-empty-state">
+                <div class="sim-empty-icon">⚡</div>
+                <div>Chọn bưu cục bên trái và đặt target %RLC để xem tác động</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Simulator items -->
+          <div class="sim-items-container" id="sim-items-container">
+            <div class="sim-items-empty" id="sim-items-empty">
+              <p>Chưa có bưu cục nào được thêm vào mô phỏng.</p>
+              <p>Tìm kiếm và thêm bưu cục từ danh sách bên trái.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

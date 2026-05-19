@@ -1220,6 +1220,22 @@ function renderSimulatorDetails() {
     const rotDiff = shop.rot - simulatedRot;
     const isReduction = rotDiff > 0;
 
+    // Calculate region & national impact details
+    const metrics = getImpactMetricsForShop(shop.name) || {
+      baseRegionRlc: 0,
+      simRegionRlc: 0,
+      regionDelta: 0,
+      baseRlc: 0,
+      simRlc: 0,
+      nationalDelta: 0
+    };
+
+    const regColor = metrics.regionDelta < 0 ? 'var(--green)' : metrics.regionDelta > 0 ? 'var(--red)' : '#94a3b8';
+    const regSign = metrics.regionDelta >= 0 ? '+' : '';
+    
+    const natColor = metrics.nationalDelta < 0 ? 'var(--green)' : metrics.nationalDelta > 0 ? 'var(--red)' : '#94a3b8';
+    const natSign = metrics.nationalDelta >= 0 ? '+' : '';
+
     card.innerHTML = `
       <div class="sim-item-header">
         <div>
@@ -1253,6 +1269,16 @@ function renderSimulatorDetails() {
             `Cảnh báo: Target lớn hơn tỷ lệ rớt hiện tại (${formatNumber(Math.abs(rotDiff))} đơn rớt tăng thêm)`
           }
         </div>
+        <div class="sim-item-impact-breakdown">
+          <div class="impact-br-row">
+            <span class="impact-br-label">Tác động Vùng (${shop.region}):</span>
+            <span class="impact-br-val region-impact-val">${metrics.baseRegionRlc.toFixed(2)}% → ${metrics.simRegionRlc.toFixed(2)}% (<strong style="color: ${regColor}">${regSign}${metrics.regionDelta.toFixed(2)}%pts</strong>)</span>
+          </div>
+          <div class="impact-br-row">
+            <span class="impact-br-label">Tác động Toàn Quốc:</span>
+            <span class="impact-br-val national-impact-val">${metrics.baseRlc.toFixed(2)}% → ${metrics.simRlc.toFixed(2)}% (<strong style="color: ${natColor}">${natSign}${metrics.nationalDelta.toFixed(2)}%pts</strong>)</span>
+          </div>
+        </div>
       </div>
     `;
     container.appendChild(card);
@@ -1260,6 +1286,43 @@ function renderSimulatorDetails() {
 
   // Calculate Global Impact
   calculateGlobalSimulationImpact();
+}
+
+// Calculate specific shop simulator impact on its region and nationwide
+function getImpactMetricsForShop(name) {
+  const shop = simulatedShops.get(name);
+  if (!shop) return null;
+
+  // 1. National Impact
+  const totalOrders = d3.sum(periodData, d => d.total_order);
+  const baseRot = d3.sum(periodData, d => d.total_rotLC);
+  const baseRlc = totalOrders > 0 ? (baseRot / totalOrders) * 100 : 0;
+
+  // Calculate simulated rot reduction for this shop specifically
+  const simRot = Math.round(shop.orders * (shop.targetRlc / 100));
+  const shopReduction = shop.rot - simRot;
+
+  const simRlc = totalOrders > 0 ? (Math.max(0, baseRot - shopReduction) / totalOrders) * 100 : 0;
+  const nationalDelta = simRlc - baseRlc;
+
+  // 2. Regional Impact
+  const regionRows = periodData.filter(d => d.Vung_xuat === shop.region);
+  const totalRegionOrders = d3.sum(regionRows, d => d.total_order);
+  const baseRegionRot = d3.sum(regionRows, d => d.total_rotLC);
+  const baseRegionRlc = totalRegionOrders > 0 ? (baseRegionRot / totalRegionOrders) * 100 : 0;
+
+  const simRegionRlc = totalRegionOrders > 0 ? (Math.max(0, baseRegionRot - shopReduction) / totalRegionOrders) * 100 : 0;
+  const regionDelta = simRegionRlc - baseRegionRlc;
+
+  return {
+    shopReduction,
+    baseRlc,
+    simRlc,
+    nationalDelta,
+    baseRegionRlc,
+    simRegionRlc,
+    regionDelta
+  };
 }
 
 // Update Target RLC in Map when slider moves
@@ -1277,14 +1340,33 @@ function updateSimTarget(slider) {
     const rotDiff = shop.rot - simulatedRot;
     const isReduction = rotDiff > 0;
     
-    const impactBox = slider.closest('.sim-item-body').querySelector('.sim-item-impact');
+    const cardBody = slider.closest('.sim-item-body');
+    const impactBox = cardBody.querySelector('.sim-item-impact');
     if (impactBox) {
       impactBox.innerHTML = isReduction ? 
         `Mục tiêu giúp giảm <strong>${formatNumber(rotDiff)}</strong> đơn rớt luân chuyển!` : 
         `Cảnh báo: Target lớn hơn tỷ lệ rớt hiện tại (${formatNumber(Math.abs(rotDiff))} đơn rớt tăng thêm)`;
     }
 
-    // Recalculate results box instantly
+    // Recalculate and update the regional/national impact texts in the card
+    const metrics = getImpactMetricsForShop(name);
+    if (metrics) {
+      const regionVal = cardBody.querySelector('.region-impact-val');
+      if (regionVal) {
+        const color = metrics.regionDelta < 0 ? 'var(--green)' : metrics.regionDelta > 0 ? 'var(--red)' : '#94a3b8';
+        const sign = metrics.regionDelta >= 0 ? '+' : '';
+        regionVal.innerHTML = `${metrics.baseRegionRlc.toFixed(2)}% → ${metrics.simRegionRlc.toFixed(2)}% (<strong style="color: ${color}">${sign}${metrics.regionDelta.toFixed(2)}%pts</strong>)`;
+      }
+
+      const nationalVal = cardBody.querySelector('.national-impact-val');
+      if (nationalVal) {
+        const color = metrics.nationalDelta < 0 ? 'var(--green)' : metrics.nationalDelta > 0 ? 'var(--red)' : '#94a3b8';
+        const sign = metrics.nationalDelta >= 0 ? '+' : '';
+        nationalVal.innerHTML = `${metrics.baseRlc.toFixed(2)}% → ${metrics.simRlc.toFixed(2)}% (<strong style="color: ${color}">${sign}${metrics.nationalDelta.toFixed(2)}%pts</strong>)`;
+      }
+    }
+
+    // Recalculate global results box instantly
     calculateGlobalSimulationImpact();
   }
 }
@@ -1372,5 +1454,6 @@ function formatMonth(dateStr) {
 
 // Escape quotes helper to avoid HTML tag breakage
 function escapeQuotes(str) {
-  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  if (!str) return '';
+  return str.replace(/"/g, '&quot;');
 }

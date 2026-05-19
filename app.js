@@ -1215,8 +1215,8 @@ function renderImpactTab() {
       <td class="col-orders">${formatNumber(d.orders)}</td>
       <td class="col-weight">${weightText}</td>
       <td class="col-rot">${formatNumber(d.rot)}</td>
-      <td class="col-trend">${generateSparklineSvg(d.name, last8Dates)}</td>
       <td class="col-rot-weight">${rotWeightText}</td>
+      <td class="col-trend">${generateSparklineSvg(d.name, last8Dates)}</td>
     `;
 
     tr.addEventListener('click', (e) => {

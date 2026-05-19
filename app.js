@@ -146,16 +146,7 @@ function setupEventListeners() {
     renderImpactTab();
   });
 
-  // Simulator Inputs
-  document.getElementById('sim-search').addEventListener('input', (e) => {
-    simulatorFilters.search = e.target.value.trim().toLowerCase();
-    renderSimulatorList();
-  });
 
-  document.getElementById('sim-filter-vung').addEventListener('change', (e) => {
-    simulatorFilters.region = e.target.value;
-    renderSimulatorList();
-  });
 }
 
 // Fetch and Load Data
@@ -252,12 +243,7 @@ function populateDimensionSelectors() {
     impactRegionSelect.add(new Option(r, r));
   });
 
-  // 3. Simulator region select
-  const simRegionSelect = document.getElementById('sim-filter-vung');
-  simRegionSelect.innerHTML = '<option value="all">Tất cả vùng</option>';
-  regions.forEach(r => {
-    simRegionSelect.add(new Option(r, r));
-  });
+
 }
 
 // Populate Period selector dynamically when Period Mode changes

@@ -488,7 +488,7 @@ function renderKPIs() {
   );
 }
 
-// Render delta values (+/-) with colors
+// Render delta values with arrows and colors (no +/- signs)
 function renderDelta(deltaEl, subEl, diff, subText, negativeIsGood, isAbsoluteChange = false) {
   subEl.textContent = subText;
   
@@ -498,18 +498,19 @@ function renderDelta(deltaEl, subEl, diff, subText, negativeIsGood, isAbsoluteCh
     return;
   }
 
-  const sign = diff > 0 ? '+' : '';
+  const arrow = diff > 0 ? '↑ ' : '↓ ';
+  const absDiff = Math.abs(diff);
   let formattedDiff = '';
   
   if (isAbsoluteChange) {
     // Absolute diff (like % points or counts)
-    formattedDiff = `${sign}${diff.toFixed(2)}`;
+    formattedDiff = `${arrow}${absDiff.toFixed(2)}`;
     if (!subText.includes('%')) {
-      formattedDiff = `${sign}${Math.round(diff).toLocaleString()}`;
+      formattedDiff = `${arrow}${Math.round(absDiff).toLocaleString()}`;
     }
   } else {
     // Percentage rate of change
-    formattedDiff = `${sign}${diff.toFixed(1)}%`;
+    formattedDiff = `${arrow}${absDiff.toFixed(1)}%`;
   }
 
   deltaEl.textContent = formattedDiff;
@@ -747,10 +748,10 @@ function renderTrendChart() {
               } else {
                 const weightText = formatNumber(Math.round(info.weight)) + ' kg';
                 const res = [
-                  `📊 TỔNG ĐƠN HÀNG: ${formatNumber(info.orders)}`,
-                  `⚖️ TỔNG KHỐI LƯỢNG: ${weightText}`,
-                  `🚨 ĐƠN RỚT LUÂN CHUYỂN: ${formatNumber(info.rot)}`,
-                  `📈 TỶ LỆ %RLC: ${info.rlc.toFixed(2)}%`
+                  `TỔNG ĐƠN HÀNG: ${formatNumber(info.orders)}`,
+                  `TỔNG KHỐI LƯỢNG: ${weightText}`,
+                  `ĐƠN RỚT LUÂN CHUYỂN: ${formatNumber(info.rot)}`,
+                  `TỶ LỆ %RLC: ${info.rlc.toFixed(2)}%`
                 ];
 
                 // Compare with previous period
@@ -759,28 +760,28 @@ function renderTrendChart() {
                   const prevPeriod = sortedPeriods[idx - 1];
                   const prevInfo = groupMap.get(prevPeriod);
                   
-                  // %RLC Comparison
+                  // %RLC Comparison (negative is good)
                   const diffRlc = info.rlc - prevInfo.rlc;
-                  const rlcSym = diffRlc > 0 ? '🔺 +' : diffRlc < 0 ? '🔻 -' : '➖ ';
-                  const rlcDiffText = diffRlc === 0 ? 'Không đổi' : `${rlcSym}${Math.abs(diffRlc).toFixed(2)}%pts`;
+                  const rlcSym = diffRlc > 0 ? '🔴 ↑' : diffRlc < 0 ? '🟢 ↓' : '➖';
+                  const rlcDiffText = diffRlc === 0 ? 'Không đổi' : `${rlcSym} ${Math.abs(diffRlc).toFixed(2)}%pts`;
 
-                  // Orders Comparison
+                  // Orders Comparison (positive is good)
                   const diffOrders = info.orders - prevInfo.orders;
                   const ordersPct = prevInfo.orders > 0 ? (diffOrders / prevInfo.orders) * 100 : 0;
-                  const ordersSym = diffOrders > 0 ? '🔺 +' : diffOrders < 0 ? '🔻 -' : '➖ ';
-                  const ordersDiffText = diffOrders === 0 ? 'Không đổi' : `${ordersSym}${Math.abs(ordersPct).toFixed(1)}% (${formatNumber(Math.abs(diffOrders))} đơn)`;
+                  const ordersSym = diffOrders > 0 ? '🟢 ↑' : diffOrders < 0 ? '🔴 ↓' : '➖';
+                  const ordersDiffText = diffOrders === 0 ? 'Không đổi' : `${ordersSym} ${Math.abs(ordersPct).toFixed(1)}% (${formatNumber(Math.abs(diffOrders))} đơn)`;
 
-                  // Rot Comparison
+                  // Rot Comparison (negative is good)
                   const diffRot = info.rot - prevInfo.rot;
                   const rotPct = prevInfo.rot > 0 ? (diffRot / prevInfo.rot) * 100 : 0;
-                  const rotSym = diffRot > 0 ? '🔺 +' : diffRot < 0 ? '🔻 -' : '➖ ';
-                  const rotDiffText = diffRot === 0 ? 'Không đổi' : `${rotSym}${Math.abs(rotPct).toFixed(1)}% (${formatNumber(Math.abs(diffRot))} đơn)`;
+                  const rotSym = diffRot > 0 ? '🔴 ↑' : diffRot < 0 ? '🟢 ↓' : '➖';
+                  const rotDiffText = diffRot === 0 ? 'Không đổi' : `${rotSym} ${Math.abs(rotPct).toFixed(1)}% (${formatNumber(Math.abs(diffRot))} đơn)`;
 
-                  // Weight Comparison
+                  // Weight Comparison (positive is good)
                   const diffWeight = info.weight - prevInfo.weight;
                   const weightPct = prevInfo.weight > 0 ? (diffWeight / prevInfo.weight) * 100 : 0;
-                  const weightSym = diffWeight > 0 ? '🔺 +' : diffWeight < 0 ? '🔻 -' : '➖ ';
-                  const weightDiffText = diffWeight === 0 ? 'Không đổi' : `${weightSym}${Math.abs(weightPct).toFixed(1)}% (${formatNumber(Math.round(Math.abs(diffWeight)))} kg)`;
+                  const weightSym = diffWeight > 0 ? '🟢 ↑' : diffWeight < 0 ? '🔴 ↓' : '➖';
+                  const weightDiffText = diffWeight === 0 ? 'Không đổi' : `${weightSym} ${Math.abs(weightPct).toFixed(1)}% (${formatNumber(Math.round(Math.abs(diffWeight)))} kg)`;
 
                   res.push('-------------------------');
                   res.push(`So sánh với ${compareLabel}:`);
@@ -994,7 +995,7 @@ function getBưuCụcBreakdownHtml(bcName) {
   let html = `
     <div class="bc-detail-panel">
       <div class="bc-detail-section">
-        <div class="bc-section-title">📦 PHÂN TÍCH THEO LOẠI HÀNG HÓA</div>
+        <div class="bc-section-title">PHÂN TÍCH THEO LOẠI HÀNG HÓA</div>
         <div class="bc-grid-cards">
   `;
 
@@ -1004,7 +1005,7 @@ function getBưuCụcBreakdownHtml(bcName) {
     html += `
           <div class="bc-micro-card ${rlcClass}">
             <div class="micro-header">
-              <span class="micro-title">${h.type === 'HÀNG NHẸ' ? '🎈 Hàng Nhẹ' : '🏋️ Hàng Nặng'}</span>
+              <span class="micro-title">${h.type === 'HÀNG NHẸ' ? 'Hàng Nhẹ' : 'Hàng Nặng'}</span>
               <span class="micro-badge">${h.rlc.toFixed(2)}% RLC</span>
             </div>
             <div class="micro-stats">
@@ -1021,18 +1022,17 @@ function getBưuCụcBreakdownHtml(bcName) {
       </div>
       
       <div class="bc-detail-section">
-        <div class="bc-section-title">👥 PHÂN TÍCH THEO PHÂN KHÚC KHÁCH HÀNG</div>
+        <div class="bc-section-title">PHÂN TÍCH THEO PHÂN KHÚC KHÁCH HÀNG</div>
         <div class="bc-grid-cards">
   `;
 
   khData.forEach(k => {
     if (k.orders === 0) return;
     const rlcClass = k.rlc > 4 ? 'crit' : k.rlc > 2 ? 'warn' : 'good';
-    const icon = k.type === 'Shopee' ? '🛍️' : k.type === 'TTS' ? '⚡' : '👤';
     html += `
           <div class="bc-micro-card ${rlcClass}">
             <div class="micro-header">
-              <span class="micro-title">${icon} ${k.type}</span>
+              <span class="micro-title">${k.type}</span>
               <span class="micro-badge">${k.rlc.toFixed(2)}% RLC</span>
             </div>
             <div class="micro-stats">

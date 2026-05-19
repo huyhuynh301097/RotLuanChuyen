@@ -83,10 +83,6 @@
       <span class="tab-icon">🎯</span>
       <span>Bưu Cục Ảnh Hưởng</span>
     </button>
-    <button class="tab-btn" data-tab="simulator">
-      <span class="tab-icon">⚡</span>
-      <span>Mô Phỏng Cải Thiện</span>
-    </button>
   </nav>
 
   <!-- MAIN -->
@@ -120,6 +116,12 @@
           <div class="kpi-value" id="kpi-buucuc-val">—</div>
           <div class="kpi-delta" id="kpi-buucuc-delta"></div>
           <div class="kpi-sub" id="kpi-buucuc-sub"></div>
+        </div>
+        <div class="kpi-card" id="kpi-weight">
+          <div class="kpi-label">Tổng Khối Lượng</div>
+          <div class="kpi-value" id="kpi-weight-val">—</div>
+          <div class="kpi-delta" id="kpi-weight-delta"></div>
+          <div class="kpi-sub" id="kpi-weight-sub"></div>
         </div>
       </div>
 
@@ -170,10 +172,10 @@
           <option value="all">Tất cả vùng</option>
         </select>
         <select class="filter-select" id="impact-sort-select">
-          <option value="contribution">Sắp xếp: Đóng Góp RLC Quốc Gia</option>
           <option value="rlc_pct">Sắp xếp: %RLC</option>
           <option value="rot_count">Sắp xếp: Số Đơn Rớt</option>
           <option value="total_order">Sắp xếp: Tổng Đơn</option>
+          <option value="total_weight">Sắp xếp: Khối Lượng (kg)</option>
         </select>
         <div class="impact-info" id="impact-count-info"></div>
       </div>
@@ -199,8 +201,7 @@
                 <th class="col-rlc sortable active" data-col="rlc_pct">%RLC ▼</th>
                 <th class="col-orders sortable" data-col="total_order">Tổng Đơn</th>
                 <th class="col-rot sortable" data-col="rot_count">Đơn Rớt</th>
-                <th class="col-contrib sortable" data-col="contribution">% Đóng Góp</th>
-                <th class="col-action" title="Thêm vào Mô Phỏng Cải Thiện">Hành Động</th>
+                <th class="col-weight sortable" data-col="total_weight">Khối Lượng (kg)</th>
               </tr>
             </thead>
             <tbody id="impact-table-body">
@@ -208,46 +209,6 @@
           </table>
         </div>
         <div class="table-pagination" id="table-pagination"></div>
-      </div>
-    </div>
-
-    <!-- ===== TAB: SIMULATOR ===== -->
-    <div class="tab-pane" id="tab-simulator">
-      <div class="sim-layout">
-
-        <!-- Left: Search panel -->
-        <div class="sim-search-panel card">
-          <div class="card-title" style="margin-bottom:12px">Thêm Bưu Cục</div>
-          <input type="text" class="search-input" id="sim-search" placeholder="🔍 Tìm bưu cục...">
-          <select class="filter-select" id="sim-filter-vung" style="margin-top:8px;width:100%">
-            <option value="all">Tất cả vùng</option>
-          </select>
-          <div class="sim-buucuc-list" id="sim-buucuc-list"></div>
-        </div>
-
-        <!-- Right: Simulator + Results -->
-        <div class="sim-right">
-
-          <!-- Results card -->
-          <div class="card sim-result-card">
-            <div class="card-title">Kết Quả Mô Phỏng</div>
-            <div class="sim-results" id="sim-results">
-              <div class="sim-empty-state">
-                <div class="sim-empty-icon">⚡</div>
-                <div>Chọn bưu cục bên trái và đặt target %RLC để xem tác động</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Simulator items -->
-          <div class="sim-items-container" id="sim-items-container">
-            <div class="sim-items-empty" id="sim-items-empty">
-              <p>Chưa có bưu cục nào được thêm vào mô phỏng.</p>
-              <p>Tìm kiếm và thêm bưu cục từ danh sách bên trái.</p>
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
 

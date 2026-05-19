@@ -204,7 +204,7 @@ async function loadData() {
       Loai_KH: d.Loai_KH,
       total_rotLC: +d.total_rotLC || 0,
       total_order: +d.total_order || 0,
-      total_weight: +d.total_weight || 0
+      total_weight: (+d.total_weight || 0) / 1000
     })).filter(d => d.total_order > 0); // exclude anomalous rows with 0 orders
 
     // Update Header Date Range Description
@@ -347,9 +347,6 @@ function updateDashboard() {
   // 1. Isolate Selected Period and Previous Period Data
   isolatePeriodData();
 
-  // Re-synchronize simulated shops with new period data
-  syncSimulatedShopsWithPeriodData();
-
   // 2. Render KPIs
   renderKPIs();
 
@@ -364,8 +361,6 @@ function updateDashboard() {
   const activeTab = document.querySelector('#tab-nav .tab-btn.active').getAttribute('data-tab');
   if (activeTab === 'impact') {
     renderImpactTab();
-  } else if (activeTab === 'simulator') {
-    renderSimulatorTab();
   }
 }
 
@@ -410,12 +405,13 @@ function isolatePeriodData() {
   }
 }
 
-// Render the 4 KPI boxes
+// Render the 5 KPI boxes
 function renderKPIs() {
   // Current Period Metrics
   const curOrders = d3.sum(periodData, d => d.total_order);
   const curRot = d3.sum(periodData, d => d.total_rotLC);
   const curRlc = curOrders > 0 ? (curRot / curOrders) * 100 : 0;
+  const curWeight = d3.sum(periodData, d => d.total_weight);
   
   const curBuucucSet = new Set(periodData.filter(d => d.total_rotLC > 0).map(d => d.tenbcxuat));
   const curBuucuc = curBuucucSet.size;
@@ -424,6 +420,7 @@ function renderKPIs() {
   const prevOrders = d3.sum(prevPeriodData, d => d.total_order);
   const prevRot = d3.sum(prevPeriodData, d => d.total_rotLC);
   const prevRlc = prevOrders > 0 ? (prevRot / prevOrders) * 100 : 0;
+  const prevWeight = d3.sum(prevPeriodData, d => d.total_weight);
   
   const prevBuucucSet = new Set(prevPeriodData.filter(d => d.total_rotLC > 0).map(d => d.tenbcxuat));
   const prevBuucuc = prevBuucucSet.size;
@@ -475,6 +472,20 @@ function renderKPIs() {
     true, // negative is good
     true // numeric change
   );
+
+  // KPI 5: Tổng Khối Lượng
+  const curWeightText = formatNumber(Math.round(curWeight)) + ' kg';
+  const prevWeightText = formatNumber(Math.round(prevWeight)) + ' kg';
+  document.getElementById('kpi-weight-val').textContent = curWeightText;
+  const weightPct = prevWeight > 0 ? ((curWeight - prevWeight) / prevWeight) * 100 : 0;
+  renderDelta(
+    document.getElementById('kpi-weight-delta'),
+    document.getElementById('kpi-weight-sub'),
+    weightPct,
+    `so với ${compareLabel} (${prevWeightText})`,
+    false, // positive is good
+    false // format as % change
+  );
 }
 
 // Render delta values (+/-) with colors
@@ -522,9 +533,11 @@ function renderRegionChart() {
     v => {
       const orders = d3.sum(v, d => d.total_order);
       const rot = d3.sum(v, d => d.total_rotLC);
+      const weight = d3.sum(v, d => d.total_weight);
       return {
         orders,
         rot,
+        weight,
         rlc: orders > 0 ? (rot / orders) * 100 : 0
       };
     },
@@ -538,6 +551,7 @@ function renderRegionChart() {
     rlc: value.rlc,
     orders: value.orders,
     rot: value.rot,
+    weight: value.weight,
     contribution: totalRot > 0 ? (value.rot / totalRot) * 100 : 0
   }));
 
@@ -590,10 +604,12 @@ function renderRegionChart() {
             label: function(context) {
               const idx = context.dataIndex;
               const d = data[idx];
+              const weightText = formatNumber(Math.round(d.weight)) + ' kg';
               return [
                 `Tỷ lệ RLC: ${d.rlc.toFixed(2)}%`,
                 `Tổng Đơn: ${formatNumber(d.orders)}`,
                 `Đơn Rớt: ${formatNumber(d.rot)}`,
+                `Khối Lượng: ${weightText}`,
                 `Đóng Góp Quốc Gia: ${d.contribution.toFixed(1)}%`
               ];
             }
@@ -637,9 +653,11 @@ function renderTrendChart() {
     v => {
       const orders = d3.sum(v, d => d.total_order);
       const rot = d3.sum(v, d => d.total_rotLC);
+      const weight = d3.sum(v, d => d.total_weight);
       return {
         orders,
         rot,
+        weight,
         rlc: orders > 0 ? (rot / orders) * 100 : 0
       };
     },
@@ -714,11 +732,22 @@ function renderTrendChart() {
               return context[0].label;
             },
             label: function(context) {
+              const idx = context.dataIndex;
+              const period = sortedPeriods[idx];
+              const info = groupMap.get(period);
               const val = context.raw;
+              
               if (context.datasetIndex === 0) {
-                return `% Rớt Luân Chuyển: ${val.toFixed(2)}%`;
+                return [
+                  `% Rớt Luân Chuyển: ${val.toFixed(2)}%`,
+                  `Đơn Rớt: ${formatNumber(info.rot)}`
+                ];
               } else {
-                return `Tổng Đơn Hàng: ${val.toLocaleString()}`;
+                const weightText = formatNumber(Math.round(info.weight)) + ' kg';
+                return [
+                  `Tổng Đơn Hàng: ${formatNumber(val)}`,
+                  `Tổng Khối Lượng: ${weightText}`
+                ];
               }
             }
           }
@@ -776,11 +805,12 @@ function renderHeatmap() {
       heatmapData[region] = {};
     }
     if (!heatmapData[region][period]) {
-      heatmapData[region][period] = { rot: 0, orders: 0 };
+      heatmapData[region][period] = { rot: 0, orders: 0, weight: 0 };
     }
     
     heatmapData[region][period].rot += d.total_rotLC;
     heatmapData[region][period].orders += d.total_order;
+    heatmapData[region][period].weight += d.total_weight;
   });
 
   // Calculate averages for sorting
@@ -850,6 +880,7 @@ function renderHeatmap() {
       
       if (cellData && cellData.orders > 0) {
         const rlc = (cellData.rot / cellData.orders) * 100;
+        const weightText = formatNumber(Math.round(cellData.weight)) + ' kg';
         
         let cellClass = 'hm-1';
         if (rlc === 0) cellClass = 'hm-0';
@@ -859,7 +890,7 @@ function renderHeatmap() {
         else if (rlc <= 6.0) cellClass = 'hm-4';
         else cellClass = 'hm-5';
 
-        td.innerHTML = `<span class="hm-cell ${cellClass}" title="Tổng đơn: ${formatNumber(cellData.orders)}\nĐơn rớt: ${formatNumber(cellData.rot)}">${rlc.toFixed(2)}%</span>`;
+        td.innerHTML = `<span class="hm-cell ${cellClass}" title="Tổng đơn: ${formatNumber(cellData.orders)}\nĐơn rớt: ${formatNumber(cellData.rot)}\nKhối lượng: ${weightText}">${rlc.toFixed(2)}%</span>`;
       } else {
         td.innerHTML = `<span class="hm-cell hm-0" style="color:var(--text3);">—</span>`;
       }
@@ -881,17 +912,17 @@ function renderImpactTab() {
     v => {
       const orders = d3.sum(v, d => d.total_order);
       const rot = d3.sum(v, d => d.total_rotLC);
+      const weight = d3.sum(v, d => d.total_weight);
       return {
         region: v[0].Vung_xuat,
         orders,
         rot,
+        weight,
         rlc: orders > 0 ? (rot / orders) * 100 : 0
       };
     },
     d => d.tenbcxuat
   );
-
-  const totalRot = d3.sum(periodData, d => d.total_rotLC);
 
   let data = Array.from(bcMap, ([name, value]) => ({
     name,
@@ -899,7 +930,7 @@ function renderImpactTab() {
     orders: value.orders,
     rot: value.rot,
     rlc: value.rlc,
-    contribution: totalRot > 0 ? (value.rot / totalRot) * 100 : 0
+    weight: value.weight
   }));
 
   // Apply filters: search & region
@@ -911,8 +942,8 @@ function renderImpactTab() {
 
   // Apply Sorting
   data.sort((a, b) => {
-    if (impactFilters.sortBy === 'contribution') {
-      return b.contribution - a.contribution;
+    if (impactFilters.sortBy === 'total_weight') {
+      return b.weight - a.weight;
     } else if (impactFilters.sortBy === 'rlc_pct') {
       return b.rlc - a.rlc;
     } else if (impactFilters.sortBy === 'rot_count') {
@@ -941,7 +972,7 @@ function renderImpactTab() {
   tbody.innerHTML = '';
 
   if (paginatedData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text3);">Không tìm thấy bưu cục nào phù hợp với bộ lọc.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text3);">Không tìm thấy bưu cục nào phù hợp với bộ lọc.</td></tr>';
     document.getElementById('table-pagination').innerHTML = '';
     return;
   }
@@ -959,12 +990,8 @@ function renderImpactTab() {
     else if (d.rlc <= 6.0) rlcClass = 'rlc-4';
     else rlcClass = 'rlc-5';
 
-    // Simulate Button state
-    const shopId = getShopId(d.name);
-    const isSimulated = simulatedShops.has(shopId);
-    const simBtnHtml = isSimulated ? 
-      `<button class="btn-add-sim added" data-shop="${shopId}" onclick="toggleSimShop(this)">✓ Đã thêm</button>` : 
-      `<button class="btn-add-sim" data-shop="${shopId}" onclick="toggleSimShop(this)">Mô Phỏng</button>`;
+    // Format weight in kg
+    const weightText = formatNumber(Math.round(d.weight)) + ' kg';
 
     tr.innerHTML = `
       <td class="col-rank">${rank}</td>
@@ -973,13 +1000,7 @@ function renderImpactTab() {
       <td class="col-rlc"><span class="rlc-badge ${rlcClass}">${d.rlc.toFixed(2)}%</span></td>
       <td class="col-orders">${formatNumber(d.orders)}</td>
       <td class="col-rot">${formatNumber(d.rot)}</td>
-      <td class="col-contrib">
-        <div class="contrib-bar-wrap">
-          <div class="contrib-bar" style="width: ${Math.min(100, d.contribution * 3.5)}px; flex-shrink:0;"></div>
-          <span class="contrib-val">${d.contribution.toFixed(2)}%</span>
-        </div>
-      </td>
-      <td class="col-action">${simBtnHtml}</td>
+      <td class="col-weight">${weightText}</td>
     `;
     tbody.appendChild(tr);
   });

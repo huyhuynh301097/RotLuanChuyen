@@ -141,7 +141,7 @@ canvas{display:block;}
 .card-hint{font-size:11px;color:var(--text3);}
 
 /* ===== KPI GRID ===== */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px;}
 .kpi-card{
   background:var(--card);border:1px solid var(--card-border);
   border-radius:var(--r2);padding:20px 24px;
@@ -161,6 +161,7 @@ canvas{display:block;}
 .kpi-sub{font-size:11px;color:var(--text3);}
 #kpi-rlc .kpi-value{color:var(--cyan);}
 #kpi-rot .kpi-value{color:var(--amber);}
+#kpi-weight .kpi-value{color:var(--purple);}
 
 /* ===== CHARTS ROW ===== */
 .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}

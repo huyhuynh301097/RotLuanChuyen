@@ -548,6 +548,8 @@ function renderRegionChart() {
     data.sort((a, b) => b.contribution - a.contribution);
   } else if (sortMode === 'orders') {
     data.sort((a, b) => b.orders - a.orders);
+  } else if (sortMode === 'weight') {
+    data.sort((a, b) => b.weight - a.weight);
   }
 
   // Slice to top 15 regions if there are too many, to maintain visual cleanliness
@@ -676,22 +678,25 @@ function renderTrendChart() {
         {
           label: '% RLC',
           data: rlcTrend,
-          borderColor: 'var(--cyan)',
-          backgroundColor: 'rgba(0, 212, 255, 0.05)',
+          borderColor: '#00ffff',
+          backgroundColor: 'rgba(0, 255, 255, 0.05)',
           fill: true,
           tension: 0.35,
-          borderWidth: 3,
-          pointBackgroundColor: 'var(--cyan)',
-          pointRadius: 4,
+          borderWidth: 4.5,
+          pointBackgroundColor: '#00ffff',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 1.5,
+          pointRadius: 5,
+          pointHoverRadius: 8,
           yAxisID: 'y'
         },
         {
           label: 'Tổng Đơn',
           data: ordersTrend,
           type: 'bar',
-          backgroundColor: 'rgba(139, 92, 246, 0.15)',
-          borderColor: 'rgba(139, 92, 246, 0.3)',
-          borderWidth: 1,
+          backgroundColor: 'rgba(139, 92, 246, 0.2)',
+          borderColor: 'rgba(139, 92, 246, 0.45)',
+          borderWidth: 1.5,
           borderRadius: 4,
           yAxisID: 'y1',
           barThickness: 16
@@ -724,16 +729,56 @@ function renderTrendChart() {
               const val = context.raw;
               
               if (context.datasetIndex === 0) {
-                return [
-                  `% Rớt Luân Chuyển: ${val.toFixed(2)}%`,
-                  `Đơn Rớt: ${formatNumber(info.rot)}`
-                ];
+                return `% RLC: ${val.toFixed(2)}%`;
               } else {
                 const weightText = formatNumber(Math.round(info.weight)) + ' kg';
-                return [
-                  `Tổng Đơn Hàng: ${formatNumber(val)}`,
-                  `Tổng Khối Lượng: ${weightText}`
+                const res = [
+                  `📊 TỔNG ĐƠN HÀNG: ${formatNumber(info.orders)}`,
+                  `⚖️ TỔNG KHỐI LƯỢNG: ${weightText}`,
+                  `🚨 ĐƠN RỚT LUÂN CHUYỂN: ${formatNumber(info.rot)}`,
+                  `📈 TỶ LỆ %RLC: ${info.rlc.toFixed(2)}%`
                 ];
+
+                // Compare with previous period
+                const compareLabel = selectedPeriodMode === 'day' ? 'ngày trước' : selectedPeriodMode === 'week' ? 'tuần trước' : 'tháng trước';
+                if (idx > 0) {
+                  const prevPeriod = sortedPeriods[idx - 1];
+                  const prevInfo = groupMap.get(prevPeriod);
+                  
+                  // %RLC Comparison
+                  const diffRlc = info.rlc - prevInfo.rlc;
+                  const rlcSym = diffRlc > 0 ? '🔺 +' : diffRlc < 0 ? '🔻 -' : '➖ ';
+                  const rlcDiffText = diffRlc === 0 ? 'Không đổi' : `${rlcSym}${Math.abs(diffRlc).toFixed(2)}%pts`;
+
+                  // Orders Comparison
+                  const diffOrders = info.orders - prevInfo.orders;
+                  const ordersPct = prevInfo.orders > 0 ? (diffOrders / prevInfo.orders) * 100 : 0;
+                  const ordersSym = diffOrders > 0 ? '🔺 +' : diffOrders < 0 ? '🔻 -' : '➖ ';
+                  const ordersDiffText = diffOrders === 0 ? 'Không đổi' : `${ordersSym}${Math.abs(ordersPct).toFixed(1)}% (${formatNumber(Math.abs(diffOrders))} đơn)`;
+
+                  // Rot Comparison
+                  const diffRot = info.rot - prevInfo.rot;
+                  const rotPct = prevInfo.rot > 0 ? (diffRot / prevInfo.rot) * 100 : 0;
+                  const rotSym = diffRot > 0 ? '🔺 +' : diffRot < 0 ? '🔻 -' : '➖ ';
+                  const rotDiffText = diffRot === 0 ? 'Không đổi' : `${rotSym}${Math.abs(rotPct).toFixed(1)}% (${formatNumber(Math.abs(diffRot))} đơn)`;
+
+                  // Weight Comparison
+                  const diffWeight = info.weight - prevInfo.weight;
+                  const weightPct = prevInfo.weight > 0 ? (diffWeight / prevInfo.weight) * 100 : 0;
+                  const weightSym = diffWeight > 0 ? '🔺 +' : diffWeight < 0 ? '🔻 -' : '➖ ';
+                  const weightDiffText = diffWeight === 0 ? 'Không đổi' : `${weightSym}${Math.abs(weightPct).toFixed(1)}% (${formatNumber(Math.round(Math.abs(diffWeight)))} kg)`;
+
+                  res.push('-------------------------');
+                  res.push(`So sánh với ${compareLabel}:`);
+                  res.push(` • %RLC: ${rlcDiffText}`);
+                  res.push(` • Tổng Đơn: ${ordersDiffText}`);
+                  res.push(` • Đơn Rớt: ${rotDiffText}`);
+                  res.push(` • Khối Lượng: ${weightDiffText}`);
+                } else {
+                  res.push('-------------------------');
+                  res.push(`So sánh với ${compareLabel}: Không có dữ liệu trước đó`);
+                }
+                return res;
               }
             }
           }
@@ -836,7 +881,7 @@ function renderHeatmap() {
     
     // Format label nicely
     let label = p;
-    if (selectedPeriodMode === 'day') label = formatDate(p);
+    if (selectedPeriodMode === 'day') label = `${formatDate(p)} (${getDayOfWeek(p)})`;
     else if (selectedPeriodMode === 'week') {
       const match = rawData.find(d => d.grass_week === p);
       label = `T${match ? match.week_num : ''}`;
@@ -888,6 +933,109 @@ function renderHeatmap() {
   
   table.appendChild(tbody);
   container.appendChild(table);
+}
+
+// Get breakdown details of a bưu cục (by Loai KH & Loai Hang)
+function getBưuCụcBreakdownHtml(bcName) {
+  const matching = periodData.filter(d => d.tenbcxuat === bcName);
+  if (matching.length === 0) {
+    return `<div style="padding:15px; color:var(--text3); font-style:italic;">Không có dữ liệu chi tiết cho bưu cục này trong chu kỳ hiện tại.</div>`;
+  }
+
+  // 1. Group by Loai KH
+  const khTypes = ['TTS', 'Shopee', 'Khac'];
+  const khData = khTypes.map(type => {
+    const rows = matching.filter(d => {
+      if (type === 'Khac') return d.Loai_KH !== 'TTS' && d.Loai_KH !== 'Shopee';
+      return d.Loai_KH === type;
+    });
+    const orders = d3.sum(rows, r => r.total_order);
+    const rot = d3.sum(rows, r => r.total_rotLC);
+    const weight = d3.sum(rows, r => r.total_weight);
+    return {
+      type,
+      orders,
+      rot,
+      weight,
+      rlc: orders > 0 ? (rot / orders) * 100 : 0
+    };
+  });
+
+  // 2. Group by Loai Hang
+  const hangTypes = ['HÀNG NHẸ', 'HÀNG NẶNG'];
+  const hangData = hangTypes.map(type => {
+    const rows = matching.filter(d => d.Loai_hang === type);
+    const orders = d3.sum(rows, r => r.total_order);
+    const rot = d3.sum(rows, r => r.total_rotLC);
+    const weight = d3.sum(rows, r => r.total_weight);
+    return {
+      type,
+      orders,
+      rot,
+      weight,
+      rlc: orders > 0 ? (rot / orders) * 100 : 0
+    };
+  });
+
+  let html = `
+    <div class="bc-detail-panel">
+      <div class="bc-detail-section">
+        <div class="bc-section-title">📦 PHÂN TÍCH THEO LOẠI HÀNG HÓA</div>
+        <div class="bc-grid-cards">
+  `;
+
+  hangData.forEach(h => {
+    if (h.orders === 0) return;
+    const rlcClass = h.rlc > 4 ? 'crit' : h.rlc > 2 ? 'warn' : 'good';
+    html += `
+          <div class="bc-micro-card ${rlcClass}">
+            <div class="micro-header">
+              <span class="micro-title">${h.type === 'HÀNG NHẸ' ? '🎈 Hàng Nhẹ' : '🏋️ Hàng Nặng'}</span>
+              <span class="micro-badge">${h.rlc.toFixed(2)}% RLC</span>
+            </div>
+            <div class="micro-stats">
+              <div class="micro-stat-row"><span>Đơn Hàng:</span> <strong>${formatNumber(h.orders)}</strong></div>
+              <div class="micro-stat-row"><span>Đơn Rớt:</span> <strong style="color:var(--red); font-weight:700;">${formatNumber(h.rot)}</strong></div>
+              <div class="micro-stat-row"><span>Khối Lượng:</span> <strong>${formatNumber(Math.round(h.weight))} kg</strong></div>
+            </div>
+          </div>
+    `;
+  });
+
+  html += `
+        </div>
+      </div>
+      
+      <div class="bc-detail-section">
+        <div class="bc-section-title">👥 PHÂN TÍCH THEO PHÂN KHÚC KHÁCH HÀNG</div>
+        <div class="bc-grid-cards">
+  `;
+
+  khData.forEach(k => {
+    if (k.orders === 0) return;
+    const rlcClass = k.rlc > 4 ? 'crit' : k.rlc > 2 ? 'warn' : 'good';
+    const icon = k.type === 'Shopee' ? '🛍️' : k.type === 'TTS' ? '⚡' : '👤';
+    html += `
+          <div class="bc-micro-card ${rlcClass}">
+            <div class="micro-header">
+              <span class="micro-title">${icon} ${k.type}</span>
+              <span class="micro-badge">${k.rlc.toFixed(2)}% RLC</span>
+            </div>
+            <div class="micro-stats">
+              <div class="micro-stat-row"><span>Đơn Hàng:</span> <strong>${formatNumber(k.orders)}</strong></div>
+              <div class="micro-stat-row"><span>Đơn Rớt:</span> <strong style="color:var(--red); font-weight:700;">${formatNumber(k.rot)}</strong></div>
+              <div class="micro-stat-row"><span>Khối Lượng:</span> <strong>${formatNumber(Math.round(k.weight))} kg</strong></div>
+            </div>
+          </div>
+    `;
+  });
+
+  html += `
+        </div>
+      </div>
+    </div>
+  `;
+  return html;
 }
 
 // Render Tab 2: Impact Explorer
@@ -979,15 +1127,42 @@ function renderImpactTab() {
     // Format weight in kg
     const weightText = formatNumber(Math.round(d.weight)) + ' kg';
 
+    tr.className = 'bc-row-main';
+    tr.style.cursor = 'pointer';
     tr.innerHTML = `
       <td class="col-rank">${rank}</td>
-      <td class="col-name"><div class="bc-name" title="${d.name}">${d.name}</div></td>
+      <td class="col-name"><div class="bc-name" title="${d.name}"><span class="expand-icon">▶</span> ${d.name}</div></td>
       <td class="col-region"><span class="vung-badge">${d.region}</span></td>
       <td class="col-rlc"><span class="rlc-badge ${rlcClass}">${d.rlc.toFixed(2)}%</span></td>
       <td class="col-orders">${formatNumber(d.orders)}</td>
       <td class="col-rot">${formatNumber(d.rot)}</td>
       <td class="col-weight">${weightText}</td>
     `;
+
+    tr.addEventListener('click', (e) => {
+      const existingDetail = tr.nextElementSibling;
+      if (existingDetail && existingDetail.classList.contains('bc-detail-row')) {
+        existingDetail.remove();
+        tr.classList.remove('expanded');
+      } else {
+        // Collapse other open detail rows first if any
+        document.querySelectorAll('.bc-detail-row').forEach(row => row.remove());
+        document.querySelectorAll('.bc-row-main').forEach(r => r.classList.remove('expanded'));
+
+        const detailTr = document.createElement('tr');
+        detailTr.className = 'bc-detail-row';
+        detailTr.innerHTML = `
+          <td colspan="7" style="padding: 0;">
+            <div class="bc-detail-wrapper">
+              ${getBưuCụcBreakdownHtml(d.name)}
+            </div>
+          </td>
+        `;
+        tr.parentNode.insertBefore(detailTr, tr.nextSibling);
+        tr.classList.add('expanded');
+      }
+    });
+
     tbody.appendChild(tr);
   });
 
@@ -1509,6 +1684,14 @@ function calculateGlobalSimulationImpact() {
 // Formatting Helper Functions
 function formatNumber(num) {
   return new Intl.NumberFormat('vi-VN').format(Math.round(num));
+}
+
+function getDayOfWeek(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
+  const days = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  return days[date.getDay()];
 }
 
 function formatDate(dateStr) {

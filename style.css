@@ -237,12 +237,31 @@ canvas{display:block;}
 .impact-table th.active{color:var(--cyan);}
 .impact-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle;}
 .impact-table tbody tr:hover{background:rgba(0,212,255,0.04);}
-.col-rank{width:40px;text-align:center;color:var(--text3);font-weight:700;}
-.col-name{max-width:260px;}
-.col-name .bc-name{font-weight:600;color:var(--text);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;}
-.col-region{width:70px;}
-.col-rlc,.col-orders,.col-rot,.col-contrib{width:100px;text-align:right;}
-.col-action{width:80px;text-align:center;}
+.col-rank{width:50px;text-align:center;color:var(--text3);font-weight:700;}
+.col-name{min-width:240px;}
+.col-name .bc-name{font-weight:600;color:var(--text);font-size:12px;white-space:nowrap;}
+.col-region{width:90px;}
+.col-rlc,.col-orders,.col-rot,.col-weight,.col-rot-weight{width:120px;text-align:right;}
+.col-trend{width:140px;text-align:center;}
+
+.bc-trend-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.01);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+.bc-trend-wrap svg {
+  display: block;
+}
+.bc-trend-last-val {
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 36px;
+  text-align: right;
+}
 
 .rlc-badge{
   display:inline-block;padding:3px 8px;border-radius:5px;

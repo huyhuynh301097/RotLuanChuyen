@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GHN | %RỚT LUÂN CHUYỂN</title>
+  <title>GHN — Phân Tích % Rớt Luân Chuyển</title>
   <meta name="description" content="Dashboard phân tích % rớt luân chuyển theo vùng, bưu cục, loại hàng và loại khách hàng GHN.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -16,10 +16,10 @@
 <!-- ===== LOADING OVERLAY ===== -->
 <div id="loading-overlay">
   <div class="loader-box">
-    <div class="loader-logo">GHN - OE</div>
+    <div class="loader-logo">GHN</div>
     <div class="loader-title">Đang tải dữ liệu...</div>
     <div class="loader-bar"><div class="loader-bar-fill" id="loader-bar-fill"></div></div>
-    <div class="loader-status" id="loader-status">Kết nối dữ liệu...</div>
+    <div class="loader-status" id="loader-status">Kết nối Google Sheets...</div>
   </div>
 </div>
 
@@ -31,7 +31,7 @@
     <div class="header-brand">
       <div class="brand-badge">GHN</div>
       <div class="brand-info">
-        <div class="brand-title">%Rớt luân chuyển</div>
+        <div class="brand-title">Rớt Luân Chuyển Analytics</div>
         <div class="brand-sub" id="header-last-updated">—</div>
       </div>
     </div>
@@ -177,6 +177,7 @@
           <option value="rot_count">Sắp xếp: Số Đơn Rớt</option>
           <option value="total_order">Sắp xếp: Tổng Đơn</option>
           <option value="total_weight">Sắp xếp: Khối Lượng (kg)</option>
+          <option value="rot_weight">Sắp xếp: Khối Lượng Rớt (kg)</option>
         </select>
         <div class="impact-info" id="impact-count-info"></div>
       </div>
@@ -201,8 +202,10 @@
                 <th class="col-region">Vùng</th>
                 <th class="col-rlc sortable active" data-col="rlc_pct">%RLC ▼</th>
                 <th class="col-orders sortable" data-col="total_order">Tổng Đơn</th>
-                <th class="col-rot sortable" data-col="rot_count">Đơn Rớt</th>
                 <th class="col-weight sortable" data-col="total_weight">Khối Lượng (kg)</th>
+                <th class="col-rot sortable" data-col="rot_count">Đơn Rớt</th>
+                <th class="col-trend">Xu Hướng 8 Ngày</th>
+                <th class="col-rot-weight sortable" data-col="rot_weight">Khối Lượng Rớt (kg)</th>
               </tr>
             </thead>
             <tbody id="impact-table-body">

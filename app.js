@@ -146,6 +146,20 @@ function setupEventListeners() {
     renderImpactTab();
   });
 
+  // Sort by clicking table headers
+  document.querySelectorAll('.impact-table th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.getAttribute('data-col');
+      impactFilters.sortBy = col;
+      
+      // Update select dropdown value to match
+      const selectEl = document.getElementById('impact-sort-select');
+      if (selectEl) selectEl.value = col;
+      
+      renderImpactTab();
+    });
+  });
+
 
 }
 
@@ -1038,6 +1052,46 @@ function getBưuCụcBreakdownHtml(bcName) {
   return html;
 }
 
+// Generate a beautiful SVG sparkline for the last 8 days of RLC data
+function generateSparklineSvg(bcName, last8Dates) {
+  const rlcValues = last8Dates.map(date => {
+    const rows = rawData.filter(d => d.tenbcxuat === bcName && d.ngay === date);
+    const orders = d3.sum(rows, d => d.total_order);
+    const rot = d3.sum(rows, d => d.total_rotLC);
+    return orders > 0 ? (rot / orders) * 100 : 0;
+  });
+
+  const width = 80;
+  const height = 20;
+  const maxVal = Math.max(...rlcValues, 1); // avoid division by 0
+  const points = rlcValues.map((v, i) => {
+    const x = (i / 7) * width;
+    const y = height - (v / maxVal) * (height - 4) - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  
+  const pathD = `M ${points.join(' L ')}`;
+  
+  const lastX = width;
+  const lastY = height - (rlcValues[7] / maxVal) * (height - 4) - 2;
+  const latestRlc = rlcValues[7];
+  const dotColor = latestRlc > 4 ? 'var(--red)' : latestRlc > 2 ? 'var(--amber)' : 'var(--green)';
+  
+  const tooltipText = last8Dates.map((d, i) => {
+    return `${formatDate(d)} (${getDayOfWeek(d)}): ${rlcValues[i].toFixed(2)}%`;
+  }).join('\n');
+
+  return `
+    <div class="bc-trend-wrap" title="${tooltipText}">
+      <svg width="${width}" height="${height}" style="overflow:visible;">
+        <path d="${pathD}" fill="none" stroke="#00ffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="${lastX}" cy="${lastY}" r="3.5" fill="${dotColor}" stroke="#ffffff" stroke-width="1" />
+      </svg>
+      <span class="bc-trend-last-val" style="color:${dotColor}">${latestRlc.toFixed(1)}%</span>
+    </div>
+  `;
+}
+
 // Render Tab 2: Impact Explorer
 function renderImpactTab() {
   // Aggregate Bưu Cục in periodData
@@ -1047,11 +1101,13 @@ function renderImpactTab() {
       const orders = d3.sum(v, d => d.total_order);
       const rot = d3.sum(v, d => d.total_rotLC);
       const weight = d3.sum(v, d => d.total_weight);
+      const rotWeight = d3.sum(v, d => d.total_order > 0 ? d.total_weight * (d.total_rotLC / d.total_order) : 0);
       return {
         region: v[0].Vung_xuat,
         orders,
         rot,
         weight,
+        rotWeight,
         rlc: orders > 0 ? (rot / orders) * 100 : 0
       };
     },
@@ -1064,7 +1120,8 @@ function renderImpactTab() {
     orders: value.orders,
     rot: value.rot,
     rlc: value.rlc,
-    weight: value.weight
+    weight: value.weight,
+    rotWeight: value.rotWeight
   }));
 
   // Apply filters: search & region
@@ -1078,6 +1135,8 @@ function renderImpactTab() {
   data.sort((a, b) => {
     if (impactFilters.sortBy === 'total_weight') {
       return b.weight - a.weight;
+    } else if (impactFilters.sortBy === 'rot_weight') {
+      return b.rotWeight - a.rotWeight;
     } else if (impactFilters.sortBy === 'rlc_pct') {
       return b.rlc - a.rlc;
     } else if (impactFilters.sortBy === 'rot_count') {
@@ -1101,12 +1160,30 @@ function renderImpactTab() {
   // Paginate table
   const paginatedData = data.slice(startIdx - 1, endIdx);
 
+  // Get the 8 most recent days in dataset
+  const allDates = [...new Set(rawData.map(d => d.ngay))].sort();
+  const last8Dates = allDates.slice(-8);
+
   // Render Table
   const tbody = document.getElementById('impact-table-body');
   tbody.innerHTML = '';
 
+  // Synchronize table headers styling with current active sorting
+  document.querySelectorAll('.impact-table th.sortable').forEach(th => {
+    const col = th.getAttribute('data-col');
+    if (col === impactFilters.sortBy) {
+      th.classList.add('active');
+      if (!th.textContent.includes('▼')) {
+        th.textContent = th.textContent.replace(' ▼', '') + ' ▼';
+      }
+    } else {
+      th.classList.remove('active');
+      th.textContent = th.textContent.replace(' ▼', '');
+    }
+  });
+
   if (paginatedData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text3);">Không tìm thấy bưu cục nào phù hợp với bộ lọc.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text3);">Không tìm thấy bưu cục nào phù hợp với bộ lọc.</td></tr>';
     document.getElementById('table-pagination').innerHTML = '';
     return;
   }
@@ -1126,6 +1203,7 @@ function renderImpactTab() {
 
     // Format weight in kg
     const weightText = formatNumber(Math.round(d.weight)) + ' kg';
+    const rotWeightText = formatNumber(Math.round(d.rotWeight)) + ' kg';
 
     tr.className = 'bc-row-main';
     tr.style.cursor = 'pointer';
@@ -1135,11 +1213,14 @@ function renderImpactTab() {
       <td class="col-region"><span class="vung-badge">${d.region}</span></td>
       <td class="col-rlc"><span class="rlc-badge ${rlcClass}">${d.rlc.toFixed(2)}%</span></td>
       <td class="col-orders">${formatNumber(d.orders)}</td>
-      <td class="col-rot">${formatNumber(d.rot)}</td>
       <td class="col-weight">${weightText}</td>
+      <td class="col-rot">${formatNumber(d.rot)}</td>
+      <td class="col-trend">${generateSparklineSvg(d.name, last8Dates)}</td>
+      <td class="col-rot-weight">${rotWeightText}</td>
     `;
 
     tr.addEventListener('click', (e) => {
+      // Don't toggle expansion when clicking buttons or sparklines if needed
       const existingDetail = tr.nextElementSibling;
       if (existingDetail && existingDetail.classList.contains('bc-detail-row')) {
         existingDetail.remove();
@@ -1152,7 +1233,7 @@ function renderImpactTab() {
         const detailTr = document.createElement('tr');
         detailTr.className = 'bc-detail-row';
         detailTr.innerHTML = `
-          <td colspan="7" style="padding: 0;">
+          <td colspan="9" style="padding: 0;">
             <div class="bc-detail-wrapper">
               ${getBưuCụcBreakdownHtml(d.name)}
             </div>

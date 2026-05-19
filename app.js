@@ -30,7 +30,20 @@ let impactFilters = {
 };
 
 // Simulator State
-let simulatedShops = new Map(); // tenbcxuat -> { name, region, originalRlc, orders, rot, targetRlc }
+let simulatedShops = new Map(); // id -> { id, name, region, originalRlc, orders, rot, targetRlc }
+const shopIdMap = new Map();
+const shopNameMap = new Map();
+let nextShopId = 1;
+
+function getShopId(name) {
+  if (!shopIdMap.has(name)) {
+    const id = `bc_${nextShopId++}`;
+    shopIdMap.set(name, id);
+    shopNameMap.set(id, name);
+  }
+  return shopIdMap.get(name);
+}
+
 let simulatorFilters = {
   search: '',
   region: 'all'
@@ -916,10 +929,11 @@ function renderImpactTab() {
     else rlcClass = 'rlc-5';
 
     // Simulate Button state
-    const isSimulated = simulatedShops.has(d.name);
+    const shopId = getShopId(d.name);
+    const isSimulated = simulatedShops.has(shopId);
     const simBtnHtml = isSimulated ? 
-      `<button class="btn-add-sim added" data-shop="${encodeURIComponent(d.name)}" onclick="toggleSimShop(this)">✓ Đã thêm</button>` : 
-      `<button class="btn-add-sim" data-shop="${encodeURIComponent(d.name)}" onclick="toggleSimShop(this)">Mô Phỏng</button>`;
+      `<button class="btn-add-sim added" data-shop="${shopId}" onclick="toggleSimShop(this)">✓ Đã thêm</button>` : 
+      `<button class="btn-add-sim" data-shop="${shopId}" onclick="toggleSimShop(this)">Mô Phỏng</button>`;
 
     tr.innerHTML = `
       <td class="col-rank">${rank}</td>
@@ -1065,10 +1079,11 @@ function renderScatterPlot(bcData) {
 
 // Toggle adding a shop to simulator from Impact table
 function toggleSimShop(btn) {
-  const name = decodeURIComponent(btn.getAttribute('data-shop'));
+  const id = btn.getAttribute('data-shop');
+  const name = shopNameMap.get(id);
   let justAdded = false;
-  if (simulatedShops.has(name)) {
-    simulatedShops.delete(name);
+  if (simulatedShops.has(id)) {
+    simulatedShops.delete(id);
   } else {
     // Find shop metrics in periodData
     const matchingRows = periodData.filter(d => d.tenbcxuat === name);
@@ -1081,7 +1096,8 @@ function toggleSimShop(btn) {
       // Default target is either 2.0% or 50% of the original RLC, whichever is smaller
       const defaultTarget = Math.min(2.0, originalRlc / 2);
 
-      simulatedShops.set(name, {
+      simulatedShops.set(id, {
+        id,
         name,
         region,
         originalRlc,
@@ -1159,8 +1175,9 @@ function renderSimulatorList() {
   }
 
   data.forEach(d => {
+    const id = getShopId(d.name);
     const item = document.createElement('div');
-    const isAdded = simulatedShops.has(d.name);
+    const isAdded = simulatedShops.has(id);
     item.className = `sim-bc-item ${isAdded ? 'in-sim' : ''}`;
     
     item.innerHTML = `
@@ -1170,10 +1187,11 @@ function renderSimulatorList() {
 
     item.addEventListener('click', () => {
       if (isAdded) {
-        simulatedShops.delete(d.name);
+        simulatedShops.delete(id);
       } else {
         const defaultTarget = Math.min(2.0, d.rlc / 2);
-        simulatedShops.set(d.name, {
+        simulatedShops.set(id, {
+          id,
           name: d.name,
           region: d.region,
           originalRlc: d.rlc,
@@ -1211,7 +1229,7 @@ function renderSimulatorDetails() {
   emptyState.classList.add('hidden');
 
   // Loop through simulated shops and render control cards
-  simulatedShops.forEach(shop => {
+  simulatedShops.forEach((shop, id) => {
     const card = document.createElement('div');
     card.className = 'sim-item-card';
 
@@ -1221,7 +1239,7 @@ function renderSimulatorDetails() {
     const isReduction = rotDiff > 0;
 
     // Calculate region & national impact details
-    const metrics = getImpactMetricsForShop(shop.name) || {
+    const metrics = getImpactMetricsForShop(id) || {
       baseRegionRlc: 0,
       simRegionRlc: 0,
       regionDelta: 0,
@@ -1242,7 +1260,7 @@ function renderSimulatorDetails() {
           <div class="sim-item-name">${shop.name}</div>
           <div class="sim-item-vung"><span class="vung-badge">${shop.region}</span></div>
         </div>
-        <button class="btn-remove-sim" data-shop="${encodeURIComponent(shop.name)}" onclick="removeSimShop(this)">Xóa</button>
+        <button class="btn-remove-sim" data-shop="${id}" onclick="removeSimShop(this)">Xóa</button>
       </div>
       <div class="sim-item-body">
         <div class="sim-current">
@@ -1258,7 +1276,7 @@ function renderSimulatorDetails() {
                    max="${Math.max(15, Math.ceil(shop.originalRlc))}" 
                    step="0.1" 
                    value="${shop.targetRlc}"
-                   data-shop="${encodeURIComponent(shop.name)}"
+                   data-shop="${id}"
                    oninput="updateSimTarget(this)">
             <span class="sim-target-pct">${shop.targetRlc.toFixed(1)}%</span>
           </div>
@@ -1289,8 +1307,8 @@ function renderSimulatorDetails() {
 }
 
 // Calculate specific shop simulator impact on its region and nationwide
-function getImpactMetricsForShop(name) {
-  const shop = simulatedShops.get(name);
+function getImpactMetricsForShop(id) {
+  const shop = simulatedShops.get(id);
   if (!shop) return null;
 
   // 1. National Impact
@@ -1327,8 +1345,8 @@ function getImpactMetricsForShop(name) {
 
 // Update Target RLC in Map when slider moves
 function updateSimTarget(slider) {
-  const name = decodeURIComponent(slider.getAttribute('data-shop'));
-  const shop = simulatedShops.get(name);
+  const id = slider.getAttribute('data-shop');
+  const shop = simulatedShops.get(id);
   if (shop) {
     shop.targetRlc = +parseFloat(slider.value).toFixed(1);
     
@@ -1349,7 +1367,7 @@ function updateSimTarget(slider) {
     }
 
     // Recalculate and update the regional/national impact texts in the card
-    const metrics = getImpactMetricsForShop(name);
+    const metrics = getImpactMetricsForShop(id);
     if (metrics) {
       const regionVal = cardBody.querySelector('.region-impact-val');
       if (regionVal) {
@@ -1373,8 +1391,8 @@ function updateSimTarget(slider) {
 
 // Remove shop from simulator
 function removeSimShop(btn) {
-  const name = decodeURIComponent(btn.getAttribute('data-shop'));
-  simulatedShops.delete(name);
+  const id = btn.getAttribute('data-shop');
+  simulatedShops.delete(id);
   renderSimulatorTab();
   
   // also update impact table button states

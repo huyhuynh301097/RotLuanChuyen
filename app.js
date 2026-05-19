@@ -314,10 +314,41 @@ function applyGlobalFilters() {
   updateDashboard();
 }
 
+// Re-synchronize simulated shops with the currently isolated periodData
+function syncSimulatedShopsWithPeriodData() {
+  if (!simulatedShops || simulatedShops.size === 0) return;
+
+  const keys = Array.from(simulatedShops.keys());
+  keys.forEach(id => {
+    const shop = simulatedShops.get(id);
+    const matchingRows = periodData.filter(d => d.tenbcxuat === shop.name);
+    
+    if (matchingRows.length === 0) {
+      // Shop doesn't exist in the new period, remove it
+      simulatedShops.delete(id);
+    } else {
+      // Update shop metrics for the new period
+      const orders = d3.sum(matchingRows, d => d.total_order);
+      const rot = d3.sum(matchingRows, d => d.total_rotLC);
+      const originalRlc = orders > 0 ? (rot / orders) * 100 : 0;
+      
+      shop.orders = orders;
+      shop.rot = rot;
+      shop.originalRlc = originalRlc;
+      
+      // Safe default: make sure targetRlc is capped by the new originalRlc
+      shop.targetRlc = Math.min(shop.targetRlc, originalRlc);
+    }
+  });
+}
+
 // Re-calculate everything and update view
 function updateDashboard() {
   // 1. Isolate Selected Period and Previous Period Data
   isolatePeriodData();
+
+  // Re-synchronize simulated shops with new period data
+  syncSimulatedShopsWithPeriodData();
 
   // 2. Render KPIs
   renderKPIs();

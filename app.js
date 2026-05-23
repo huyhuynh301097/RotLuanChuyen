@@ -566,9 +566,12 @@ function renderRegionChart() {
   } else if (sortMode === 'weight') {
     data.sort((a, b) => b.weight - a.weight);
   }
-
-  // Slice to top 15 regions if there are too many, to maintain visual cleanliness
-  data = data.slice(0, 15);
+  // Adjust parent wrapper height dynamically to display all regions properly
+  const chartWrap = document.querySelector('.chart-wrap-region');
+  if (chartWrap) {
+    const dynamicHeight = Math.max(380, data.length * 28 + 60);
+    chartWrap.style.height = `${dynamicHeight}px`;
+  }
 
   const labels = data.map(d => d.name);
   const rlcValues = data.map(d => d.rlc);
@@ -967,11 +970,13 @@ function getBưuCụcBreakdownHtml(bcName) {
     const orders = d3.sum(rows, r => r.total_order);
     const rot = d3.sum(rows, r => r.total_rotLC);
     const weight = d3.sum(rows, r => r.total_weight);
+    const rotWeight = d3.sum(rows, r => r.total_order > 0 ? r.total_weight * (r.total_rotLC / r.total_order) : 0);
     return {
       type,
       orders,
       rot,
       weight,
+      rotWeight,
       rlc: orders > 0 ? (rot / orders) * 100 : 0
     };
   });
@@ -983,11 +988,13 @@ function getBưuCụcBreakdownHtml(bcName) {
     const orders = d3.sum(rows, r => r.total_order);
     const rot = d3.sum(rows, r => r.total_rotLC);
     const weight = d3.sum(rows, r => r.total_weight);
+    const rotWeight = d3.sum(rows, r => r.total_order > 0 ? r.total_weight * (r.total_rotLC / r.total_order) : 0);
     return {
       type,
       orders,
       rot,
       weight,
+      rotWeight,
       rlc: orders > 0 ? (rot / orders) * 100 : 0
     };
   });
@@ -1012,6 +1019,7 @@ function getBưuCụcBreakdownHtml(bcName) {
               <div class="micro-stat-row"><span>Đơn Hàng:</span> <strong>${formatNumber(h.orders)}</strong></div>
               <div class="micro-stat-row"><span>Đơn Rớt:</span> <strong style="color:var(--red); font-weight:700;">${formatNumber(h.rot)}</strong></div>
               <div class="micro-stat-row"><span>Khối Lượng:</span> <strong>${formatNumber(Math.round(h.weight))} kg</strong></div>
+              <div class="micro-stat-row"><span>KL Rớt:</span> <strong style="color:var(--red); font-weight:700;">${formatNumber(Math.round(h.rotWeight))} kg</strong></div>
             </div>
           </div>
     `;
@@ -1039,6 +1047,7 @@ function getBưuCụcBreakdownHtml(bcName) {
               <div class="micro-stat-row"><span>Đơn Hàng:</span> <strong>${formatNumber(k.orders)}</strong></div>
               <div class="micro-stat-row"><span>Đơn Rớt:</span> <strong style="color:var(--red); font-weight:700;">${formatNumber(k.rot)}</strong></div>
               <div class="micro-stat-row"><span>Khối Lượng:</span> <strong>${formatNumber(Math.round(k.weight))} kg</strong></div>
+              <div class="micro-stat-row"><span>KL Rớt:</span> <strong style="color:var(--red); font-weight:700;">${formatNumber(Math.round(k.rotWeight))} kg</strong></div>
             </div>
           </div>
     `;
